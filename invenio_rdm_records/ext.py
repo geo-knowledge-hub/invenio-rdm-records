@@ -35,6 +35,8 @@ from .services.pids import PIDManager, PIDsService
 from .services.review.service import ReviewService
 from .services.schemas.metadata_extensions import MetadataExtensions
 
+from .customizations import load_service_config
+
 
 def verify_token():
     """Verify the token and store it in the session if it's valid."""
@@ -132,9 +134,30 @@ class InvenioRDMRecords(object):
         """Customized service configs."""
 
         class ServiceConfigs:
-            record = RDMRecordServiceConfig.build(app)
-            file = RDMFileRecordServiceConfig.build(app)
-            file_draft = RDMFileDraftServiceConfig.build(app)
+            record = load_service_config(
+                "RDM_RECORD_SERVICE_CFG", 
+                app, 
+                default = RDMRecordServiceConfig, 
+                import_string=True, 
+                build = True
+            )
+
+            file = load_service_config(
+                "RDM_FILE_SERVICE_CFG", 
+                app, 
+                default = RDMFileRecordServiceConfig, 
+                import_string=True, 
+                build = True
+            )
+
+            file_draft = load_service_config(
+                "RDM_FILE_DRAFT_SERVICE_CFG", 
+                app, 
+                default = RDMFileDraftServiceConfig, 
+                import_string=True, 
+                build = True
+            )
+
             affiliations = AffiliationsServiceConfig
             names = NamesServiceConfig
             subjects = SubjectsServiceConfig
