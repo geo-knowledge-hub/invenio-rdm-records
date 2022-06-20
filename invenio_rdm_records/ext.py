@@ -35,7 +35,7 @@ from .services.pids import PIDManager, PIDsService
 from .services.review.service import ReviewService
 from .services.schemas.metadata_extensions import MetadataExtensions
 
-from .customizations import load_service_config
+from .customizations import load_config_class
 
 
 def verify_token():
@@ -98,7 +98,7 @@ class InvenioRDMRecords(object):
 
         for k in dir(config):
             if k in supported_configurations or k.startswith('RDM_') \
-                    or k.startswith('DATACITE_'):
+                or k.startswith('DATACITE_'):
                 app.config.setdefault(k, getattr(config, k))
 
         # Deprecations
@@ -134,35 +134,107 @@ class InvenioRDMRecords(object):
         """Customized service configs."""
 
         class ServiceConfigs:
-            record = load_service_config(
-                "RDM_RECORD_SERVICE_CFG", 
-                app, 
-                default = RDMRecordServiceConfig, 
-                import_string=True, 
-                build = True
+            record = load_config_class(
+                "RDM_RECORD_SERVICE_CFG",
+                app,
+                default=RDMRecordServiceConfig,
+                import_string=True,
+                build=True
             )
 
-            file = load_service_config(
-                "RDM_FILE_SERVICE_CFG", 
-                app, 
-                default = RDMFileRecordServiceConfig, 
-                import_string=True, 
-                build = True
+            file = load_config_class(
+                "RDM_FILE_SERVICE_CFG",
+                app,
+                default=RDMFileRecordServiceConfig,
+                import_string=True,
+                build=True
             )
 
-            file_draft = load_service_config(
-                "RDM_FILE_DRAFT_SERVICE_CFG", 
-                app, 
-                default = RDMFileDraftServiceConfig, 
-                import_string=True, 
-                build = True
+            file_draft = load_config_class(
+                "RDM_FILE_DRAFT_SERVICE_CFG",
+                app,
+                default=RDMFileDraftServiceConfig,
+                import_string=True,
+                build=True
             )
 
-            affiliations = AffiliationsServiceConfig
-            names = NamesServiceConfig
-            subjects = SubjectsServiceConfig
+            affiliations = load_config_class(
+                "RDM_AFFILIATIONS_SERVICE_CFG",
+                app,
+                default=AffiliationsServiceConfig,
+                import_string=True,
+            )
+
+            names = load_config_class(
+                "RDM_NAMES_SERVICE_CFG",
+                app,
+                default=NamesServiceConfig,
+                import_string=True,
+            )
+
+            subjects = load_config_class(
+                "RDM_SUBJECTS_SERVICE_CFG",
+                app,
+                default=SubjectsServiceConfig,
+                import_string=True,
+            )
 
         return ServiceConfigs
+
+    def resource_configs(self, app):
+        """Customized resources configs."""
+
+        class ResourceConfigs:
+            record = load_config_class(
+                "RDM_RECORD_RESOURCE_CFG",
+                app,
+                default=RDMRecordResourceConfig,
+                import_string=True,
+            )
+
+            parent = load_config_class(
+                "RDM_RECORD_RESOURCE_CFG",
+                app,
+                default=RDMParentRecordLinksResourceConfig,
+                import_string=True
+            )
+
+            file = load_config_class(
+                "RDM_FILE_RESOURCE_CFG",
+                app,
+                default=RDMRecordFilesResourceConfig,
+                import_string=True,
+            )
+
+            file_draft = load_config_class(
+                "RDM_FILE_DRAFT_RESOURCE_CFG",
+                app,
+                default=RDMDraftFilesResourceConfig,
+                import_string=True,
+            )
+
+            affiliations = load_config_class(
+                "RDM_AFFILIATIONS_RESOURCE_CFG",
+                app,
+                default=AffiliationsResourceConfig,
+                import_string=True,
+            )
+
+            names = load_config_class(
+                "RDM_NAMES_RESOURCE_CFG",
+                app,
+                default=NamesResourceConfig,
+                import_string=True,
+            )
+
+            subjects = load_config_class(
+                "RDM_SUBJECTS_RESOURCE_CFG",
+                app,
+                default=SubjectsResourceConfig,
+                import_string=True,
+            )
+
+        return ResourceConfigs
 
     def init_services(self, app):
         """Initialize vocabulary resources."""
@@ -189,41 +261,44 @@ class InvenioRDMRecords(object):
 
     def init_resource(self, app):
         """Initialize vocabulary resources."""
+
+        resource_configs = self.resource_configs(app)
+
         self.records_resource = RDMRecordResource(
-            RDMRecordResourceConfig,
-            self.records_service,
+            service=self.records_service,
+            config=resource_configs.record
         )
 
         # Record files resource
         self.record_files_resource = FileResource(
             service=self.records_service.files,
-            config=RDMRecordFilesResourceConfig
+            config=resource_configs.file
         )
 
         # Draft files resource
         self.draft_files_resource = FileResource(
             service=self.records_service.draft_files,
-            config=RDMDraftFilesResourceConfig
+            config=resource_configs.file_draft
         )
 
         # Parent Records
         self.parent_record_links_resource = RDMParentRecordLinksResource(
             service=self.records_service,
-            config=RDMParentRecordLinksResourceConfig
+            config=resource_configs.parent
         )
 
         # Vocabularies
         self.affiliations_resource = AffiliationsResource(
             service=self.affiliations_service,
-            config=AffiliationsResourceConfig,
+            config=resource_configs.affiliations,
         )
         self.names_resource = NamesResource(
             service=self.names_service,
-            config=NamesResourceConfig,
+            config=resource_configs.names,
         )
         self.subjects_resource = SubjectsResource(
             service=self.subjects_service,
-            config=SubjectsResourceConfig,
+            config=resource_configs.subjects,
         )
 
     def fix_datacite_configs(self, app):

@@ -9,7 +9,7 @@
 from invenio_base.utils import load_or_import_from_config
 
 
-def load_service_config(
+def load_config_class(
     config_key, app_ctx, default=None, import_string=False, build=False
 ):
     """Function to load services configuration.
@@ -18,7 +18,7 @@ def load_service_config(
         https://docs.python.org/3/howto/descriptor.html
 
     Note:
-        This class is based on `invenio_rdm_records.services.customizations.FromConfig`.
+        This function is based on `invenio_rdm_records.services.customizations.FromConfig`.
     """
     res = None
 
