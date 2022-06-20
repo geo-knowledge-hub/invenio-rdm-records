@@ -21,6 +21,7 @@ tests_require = [
     'invenio-app>=1.3.1,<2.0.0',
     'pytest-invenio>=1.4.2,<2.0.0',
     'pytest-mock>=1.6.0',
+    'Sphinx>=4.2.0'
 ]
 
 # Should follow inveniosoftware/invenio versions
