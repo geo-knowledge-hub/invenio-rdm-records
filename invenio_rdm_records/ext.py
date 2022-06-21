@@ -193,7 +193,7 @@ class InvenioRDMRecords(object):
             )
 
             parent = load_config_class(
-                "RDM_RECORD_RESOURCE_CFG",
+                "RDM_PARENT_RESOURCE_CFG",
                 app,
                 default=RDMParentRecordLinksResourceConfig,
                 import_string=True
