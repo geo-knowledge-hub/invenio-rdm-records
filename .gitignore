@@ -73,3 +73,11 @@ Pipfile.lock
 
 # pip wheel
 pip-wheel-metadata/
+
+# Vagrant
+Vagrantfile
+bootstrap.sh
+.vagrant/
+
+# Pyenv
+.python-version
