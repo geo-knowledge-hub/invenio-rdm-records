@@ -20,8 +20,10 @@ from flask_iiif.api import IIIFImageAPIWrapper
 from invenio_drafts_resources.services.records import RecordService
 from invenio_records_resources.services import LinksTemplate, Service
 from invenio_records_resources.services.uow import RecordCommitOp, unit_of_work
+from invenio_requests.services.results import EntityResolverExpandableField
 
 from invenio_rdm_records.services.errors import EmbargoNotLiftedError
+from invenio_rdm_records.services.results import ParentCommunitiesExpandableField
 
 try:
     from importlib import metadata
@@ -30,8 +32,9 @@ except ImportError:
     import importlib_metadata as metadata
 
 try:
-    metadata.distribution('wand')
+    metadata.distribution("wand")
     from wand.image import Image
+
     HAS_IMAGEMAGICK = True
 except (metadata.PackageNotFoundError, ImportError):
     # ImageMagick notinstalled
@@ -41,9 +44,15 @@ except (metadata.PackageNotFoundError, ImportError):
 class RDMRecordService(RecordService):
     """RDM record service."""
 
-    def __init__(self, config, files_service=None, draft_files_service=None,
-                 secret_links_service=None, pids_service=None,
-                 review_service=None):
+    def __init__(
+        self,
+        config,
+        files_service=None,
+        draft_files_service=None,
+        secret_links_service=None,
+        pids_service=None,
+        review_service=None,
+    ):
         """Constructor for RecordService."""
         super().__init__(config, files_service, draft_files_service)
         self._secret_links = secret_links_service
@@ -67,6 +76,20 @@ class RDMRecordService(RecordService):
     def review(self):
         """Record PIDs service."""
         return self._review
+
+    #
+    # Properties
+    #
+    @property
+    def expandable_fields(self):
+        """Get expandable fields.
+
+        Expand community field to return community details.
+        """
+        return [
+            EntityResolverExpandableField("parent.review.receiver"),
+            ParentCommunitiesExpandableField("parent.communities.default"),
+        ]
 
     #
     # Service methods
@@ -102,14 +125,15 @@ class RDMRecordService(RecordService):
         """Scan for records with an expired embargo."""
         today = arrow.utcnow().date().isoformat()
 
-        embargoed_q = \
-            f"access.embargo.active:true " \
-            f"AND access.embargo.until:[* TO {today}]"
+        embargoed_q = (
+            f"access.embargo.active:true AND access.embargo.until:[* TO {today}]"
+        )
 
         return self.scan(identity=identity, q=embargoed_q)
 
-    def search_community_records(self, identity, community_uuid, params=None,
-                                 es_preference=None, **kwargs):
+    def search_community_records(
+        self, identity, community_id, params=None, es_preference=None, **kwargs
+    ):
         """Search for records published in the given community."""
         self.require_permission(identity, "read")
 
@@ -123,9 +147,7 @@ class RDMRecordService(RecordService):
             es_preference,
             record_cls=self.record_cls,
             search_opts=self.config.search,
-            extra_filter=Q(
-                "term", **{"parent.communities.ids": str(community_uuid)}
-            ),
+            extra_filter=Q("term", **{"parent.communities.ids": str(community_id)}),
             permission_action="read",
             **kwargs,
         ).execute()
@@ -139,8 +161,8 @@ class RDMRecordService(RecordService):
                 self.config.links_search_community_records,
                 context={
                     "args": params,
-                    "id": community_uuid,
-                }
+                    "id": community_id,
+                },
             ),
             links_item_tpl=self.links_item_tpl,
         )
@@ -162,7 +184,7 @@ class IIIFService(Service):
 
         We assume the uuid is build as ``<record|draft>:<pid_value>``.
         """
-        type_, id_ = uuid.split(':', 1)
+        type_, id_ = uuid.split(":", 1)
         return type_, id_
 
     def _iiif_image_uuid(self, uuid):
@@ -170,7 +192,7 @@ class IIIFService(Service):
 
         We assume the uuid is build as ``<record|draft>:<pid_value>:<key>``.
         """
-        type_, id_, key = uuid.split(':', 2)
+        type_, id_, key = uuid.split(":", 2)
         return type_, id_, key
 
     def file_service(self, type_):
@@ -198,14 +220,14 @@ class IIIFService(Service):
         return record
 
     def _open_image(self, file_):
-        fp = file_.get_stream('rb')
+        fp = file_.get_stream("rb")
         # If ImageMagick with Wand is installed, extract first page
         # for PDF/text.
-        pages_mimetypes = {'application/pdf', 'text/plain'}
+        pages_mimetypes = {"application/pdf", "text/plain"}
         if HAS_IMAGEMAGICK and file_.data["mimetype"] in pages_mimetypes:
             first_page = Image(Image(fp).sequence[0])
             tempfile_ = tempfile.TemporaryFile()
-            with first_page.convert(format='png') as converted:
+            with first_page.convert(format="png") as converted:
                 converted.save(file=tempfile_)
             return tempfile_
 
@@ -220,9 +242,7 @@ class IIIFService(Service):
 
         service = self.file_service(type_)
         # TODO: add cache and check if the metadata is present
-        return service.get_file_content(
-            id_=id_, file_key=key, identity=identity
-        )
+        return service.get_file_content(id_=id_, file_key=key, identity=identity)
 
     def image_api(
         self,
@@ -248,9 +268,7 @@ class IIIFService(Service):
         type_, id_, key = self._iiif_image_uuid(uuid)
         service = self.file_service(type_)
         # TODO: check cache before this
-        file_ = service.get_file_content(
-            id_=id_, file_key=key, identity=identity
-        )
+        file_ = service.get_file_content(id_=id_, file_key=key, identity=identity)
         data = self._open_image(file_)
         # TODO: include image magic for pdf
         image = IIIFImageAPIWrapper.open_image(data)

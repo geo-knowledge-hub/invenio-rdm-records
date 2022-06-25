@@ -8,7 +8,7 @@
 """Community submission request."""
 
 from flask_babelex import lazy_gettext as _
-from invenio_records_resources.services.uow import RecordCommitOp
+from invenio_records_resources.services.uow import RecordCommitOp, RecordIndexOp
 from invenio_requests.customizations import actions
 
 from ..proxies import current_rdm_records_service as service
@@ -26,7 +26,7 @@ class SubmitAction(actions.SubmitAction):
         draft = self.request.topic.resolve()
         service._validate_draft(identity, draft)
         # Set the record's title as the request title.
-        self.request['title'] = draft.metadata['title']
+        self.request["title"] = draft.metadata["title"]
         super().execute(identity, uow)
 
 
@@ -81,6 +81,8 @@ class DeclineAction(actions.DeclineAction):
         # request object
         draft.parent.review = self.request
         uow.register(RecordCommitOp(draft.parent))
+        # update draft to reflect the new status
+        uow.register(RecordIndexOp(draft, indexer=service.indexer))
 
 
 class CancelAction(actions.CancelAction):
@@ -93,6 +95,8 @@ class CancelAction(actions.CancelAction):
         draft = self.request.topic.resolve()
         draft.parent.review = None
         uow.register(RecordCommitOp(draft.parent))
+        # update draft to reflect the new status
+        uow.register(RecordIndexOp(draft, indexer=service.indexer))
         super().execute(identity, uow)
 
 
@@ -113,6 +117,8 @@ class ExpireAction(actions.CancelAction):
         # request object
         draft.parent.review = self.request
         uow.register(RecordCommitOp(draft.parent))
+        # update draft to reflect the new status
+        uow.register(RecordIndexOp(draft, indexer=service.indexer))
 
 
 #
@@ -121,19 +127,19 @@ class ExpireAction(actions.CancelAction):
 class CommunitySubmission(ReviewRequest):
     """Review request for submitting a record to a community."""
 
-    type_id = 'community-submission'
-    name = _('Community submission')
+    type_id = "community-submission"
+    name = _("Community submission")
 
     block_publish = True
     set_as_default = True
 
     creator_can_be_none = False
     topic_can_be_none = False
-    allowed_creator_ref_types = ['user']
-    allowed_receiver_ref_types = ['community']
-    allowed_topic_ref_types = ['record']
+    allowed_creator_ref_types = ["user"]
+    allowed_receiver_ref_types = ["community"]
+    allowed_topic_ref_types = ["record"]
     needs_context = {
-        'community_roles': ['owner', 'manager', 'curator'],
+        "community_roles": ["owner", "manager", "curator"],
     }
 
     available_actions = {

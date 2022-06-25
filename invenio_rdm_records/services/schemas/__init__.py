@@ -13,7 +13,7 @@
 from flask import current_app
 from flask_babelex import lazy_gettext as _
 from invenio_drafts_resources.services.records.schema import RecordSchema
-from marshmallow import ValidationError, fields, post_dump
+from marshmallow import EXCLUDE, ValidationError, fields, post_dump
 from marshmallow_utils.fields import NestedAttribute, SanitizedUnicode
 from marshmallow_utils.permissions import FieldPermissionsMixin
 
@@ -34,8 +34,13 @@ def validate_scheme(scheme):
 class RDMRecordSchema(RecordSchema, FieldPermissionsMixin):
     """Record schema."""
 
+    class Meta:
+        """Meta attributes for the schema."""
+
+        unknown = EXCLUDE
+
     field_load_permissions = {
-        'files': 'update_draft',
+        "files": "update_draft",
     }
 
     # ATTENTION: In this schema you should be using the ``NestedAttribute``
@@ -105,6 +110,6 @@ class RDMRecordSchema(RecordSchema, FieldPermissionsMixin):
 
 
 __all__ = (
-    'RDMParentSchema',
-    'RDMRecordSchema',
+    "RDMParentSchema",
+    "RDMRecordSchema",
 )

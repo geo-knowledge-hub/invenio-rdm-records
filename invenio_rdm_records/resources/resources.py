@@ -16,20 +16,36 @@ from email.utils import parsedate
 
 from flask import abort, g, request, send_file
 from flask_cors import cross_origin
-from flask_resources import HTTPJSONException, Resource, ResponseHandler, \
-    from_conf, request_parser, resource_requestctx, response_handler, route, \
-    with_content_negotiation
+from flask_resources import (
+    HTTPJSONException,
+    Resource,
+    ResponseHandler,
+    from_conf,
+    request_parser,
+    resource_requestctx,
+    response_handler,
+    route,
+    with_content_negotiation,
+)
 from invenio_drafts_resources.resources import RecordResource
 from invenio_drafts_resources.resources.records.errors import RedirectException
 from invenio_records_resources.resources.errors import ErrorHandlersMixin
-from invenio_records_resources.resources.records.resource import \
-    request_data, request_headers, request_search_args, request_view_args
+from invenio_records_resources.resources.records.resource import (
+    request_data,
+    request_extra_args,
+    request_headers,
+    request_search_args,
+    request_view_args,
+)
 from invenio_records_resources.resources.records.utils import es_preference
 from werkzeug.utils import secure_filename
 
-from .serializers import IIIFCanvasV2JSONSerializer, \
-    IIIFInfoV2JSONSerializer, IIIFManifestV2JSONSerializer, \
-    IIIFSequenceV2JSONSerializer
+from .serializers import (
+    IIIFCanvasV2JSONSerializer,
+    IIIFInfoV2JSONSerializer,
+    IIIFManifestV2JSONSerializer,
+    IIIFSequenceV2JSONSerializer,
+)
 
 
 class RDMRecordResource(RecordResource):
@@ -50,12 +66,8 @@ class RDMRecordResource(RecordResource):
             route("GET", p(routes["item-review"]), self.review_read),
             route("PUT", p(routes["item-review"]), self.review_update),
             route("DELETE", p(routes["item-review"]), self.review_delete),
-            route("POST", p(routes[
-                "item-actions-review"
-                ]), self.review_submit),
-            route("GET", routes[
-                "community-records"
-                ], self.search_community_records)
+            route("POST", p(routes["item-actions-review"]), self.review_submit),
+            route("GET", routes["community-records"], self.search_community_records),
         ]
 
         return url_rules
@@ -116,6 +128,7 @@ class RDMRecordResource(RecordResource):
     #
     # PIDs
     #
+    @request_extra_args
     @request_view_args
     @response_handler()
     def pids_reserve(self):
@@ -124,10 +137,12 @@ class RDMRecordResource(RecordResource):
             identity=g.identity,
             id_=resource_requestctx.view_args["pid_value"],
             scheme=resource_requestctx.view_args["scheme"],
+            expand=resource_requestctx.args.get("expand", False),
         )
 
         return item.to_dict(), 201
 
+    @request_extra_args
     @request_view_args
     @response_handler()
     def pids_discard(self):
@@ -136,6 +151,7 @@ class RDMRecordResource(RecordResource):
             identity=g.identity,
             id_=resource_requestctx.view_args["pid_value"],
             scheme=resource_requestctx.view_args["scheme"],
+            expand=resource_requestctx.args.get("expand", False),
         )
 
         return item.to_dict(), 200
@@ -150,7 +166,7 @@ class RDMRecordResource(RecordResource):
         """Perform a search over the community's records."""
         hits = self.service.search_community_records(
             identity=g.identity,
-            community_uuid=resource_requestctx.view_args["pid_value"],
+            community_id=resource_requestctx.view_args["pid_value"],
             params=resource_requestctx.args,
             es_preference=es_preference(),
         )
@@ -325,9 +341,9 @@ class IIIFResource(ErrorHandlersMixin, Resource):
     def base(self):
         """Base."""
         item = self.service.get_file(
-                identity=g.identity,
-                uuid=resource_requestctx.view_args["uuid"],
-            )
+            identity=g.identity,
+            uuid=resource_requestctx.view_args["uuid"],
+        )
         raise RedirectException(item["links"]["iiif_info"])
 
     @cross_origin(origin="*", methods=["GET"])
@@ -337,9 +353,9 @@ class IIIFResource(ErrorHandlersMixin, Resource):
     def info(self):
         """Get IIIF image info."""
         item = self.service.get_file(
-                identity=g.identity,
-                uuid=resource_requestctx.view_args["uuid"],
-            )
+            identity=g.identity,
+            uuid=resource_requestctx.view_args["uuid"],
+        )
         return item.to_dict(), 200
 
     @cross_origin(origin="*", methods=["GET"])
@@ -376,9 +392,7 @@ class IIIFResource(ErrorHandlersMixin, Resource):
             image_format=image_format,
         )
         # decide the mime_type from the requested image_format
-        mimetype = self.config.supported_formats.get(
-            image_format, "image/jpeg"
-        )
+        mimetype = self.config.supported_formats.get(image_format, "image/jpeg")
         # TODO: get from cache on the service image.last_modified
         last_modified = None
         send_file_kwargs = {"mimetype": mimetype}
@@ -398,9 +412,7 @@ class IIIFResource(ErrorHandlersMixin, Resource):
             )
         if_modified_since_raw = request.headers.get("If-Modified-Since")
         if if_modified_since_raw:
-            if_modified_since = datetime.datetime(
-                *parsedate(if_modified_since_raw)[:6]
-            )
+            if_modified_since = datetime.datetime(*parsedate(if_modified_since_raw)[:6])
             if if_modified_since and if_modified_since >= last_modified:
                 raise HTTPJSONException(code=304)
         response = send_file(to_serve, **send_file_kwargs)

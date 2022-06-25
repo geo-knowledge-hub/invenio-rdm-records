@@ -9,25 +9,10 @@
 
 from io import BytesIO
 
-import flask_security
-from invenio_accounts.testutils import login_user_via_session
 from PIL import Image
 from tripoli import IIIFValidator
 
-from invenio_rdm_records.proxies import current_rdm_records
-
-
-def login_user(client, user):
-    """Log user in."""
-    flask_security.login_user(user, remember=True)
-    login_user_via_session(client, email=user.email)
-
-
-def logout_user(client):
-    """Log current user out."""
-    flask_security.logout_user()
-    with client.session_transaction() as session:
-        session.pop("user_id", None)
+from tests.helpers import login_user, logout_user
 
 
 def publish_record_with_images(
@@ -40,12 +25,12 @@ def publish_record_with_images(
 
     # Create a draft
     res = client.post("/records", headers=headers, json=record)
-    id_ = res.json['id']
+    id_ = res.json["id"]
 
     # create a new image
-    res = client.post(f"/records/{id_}/draft/files", headers=headers, json=[
-        {'key': file_id}
-    ])
+    res = client.post(
+        f"/records/{id_}/draft/files", headers=headers, json=[{"key": file_id}]
+    )
 
     # Upload a file
     image_file = BytesIO()
@@ -54,14 +39,12 @@ def publish_record_with_images(
     image_file.seek(0)
     res = client.put(
         f"/records/{id_}/draft/files/{file_id}/content",
-        headers={'content-type': 'application/octet-stream'},
+        headers={"content-type": "application/octet-stream"},
         data=image_file,
     )
 
     # Commit the file
-    res = client.post(
-        f"/records/{id_}/draft/files/{file_id}/commit", headers=headers
-    )
+    res = client.post(f"/records/{id_}/draft/files/{file_id}/commit", headers=headers)
 
     # Publish the record
     res = client.post(f"/records/{id_}/draft/actions/publish", headers=headers)
@@ -74,9 +57,7 @@ def test_iiif_manifest_schema(
 ):
     client = client_with_login
     file_id = "test_image.png"
-    recid = publish_record_with_images(
-        client, file_id, minimal_record, headers
-    )
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
     response = client.get(f"/iiif/record:{recid}/manifest")
     manifest = response.json
     validator = IIIFValidator(fail_fast=False)
@@ -89,17 +70,12 @@ def test_iiif_manifest(
 ):
     client = client_with_login
     file_id = "test_image.png"
-    recid = publish_record_with_images(
-        client, file_id, minimal_record, headers
-    )
+    recid = publish_record_with_images(client, file_id, minimal_record, headers)
     response = client.get(f"/iiif/record:{recid}/manifest")
     assert response.status_code == 200
 
     manifest = response.json
-    assert (
-        manifest["@id"]
-        == f"https://127.0.0.1:5000/api/iiif/record:{recid}/manifest"
-    )
+    assert manifest["@id"] == f"https://127.0.0.1:5000/api/iiif/record:{recid}/manifest"
     assert manifest["label"] == "A Romans story"
     assert "sequences" in manifest
     assert len(manifest["sequences"]) == 1
@@ -115,8 +91,7 @@ def test_iiif_manifest(
     canvas = sequence["canvases"][0]
     assert (
         canvas["@id"]
-        ==
-        f"https://127.0.0.1:5000/api/iiif/record:{recid}/canvas/test_image.png"
+        == f"https://127.0.0.1:5000/api/iiif/record:{recid}/canvas/test_image.png"
     )
     assert canvas["height"] == 1024
     assert canvas["width"] == 1280
@@ -128,15 +103,12 @@ def test_iiif_manifest(
     assert image["resource"]["height"] == 1024
     assert image["resource"]["width"] == 1280
     assert (
-        image["resource"]["@id"]
-        ==
-        f"https://127.0.0.1:5000/api/iiif/"
+        image["resource"]["@id"] == f"https://127.0.0.1:5000/api/iiif/"
         f"record:{recid}:{file_id}/full/full/0/default.png"
     )
     assert (
         image["resource"]["service"]["@id"]
-        ==
-        f"https://127.0.0.1:5000/api/iiif/record:{recid}:{file_id}/info.json"
+        == f"https://127.0.0.1:5000/api/iiif/record:{recid}:{file_id}"
     )
 
 

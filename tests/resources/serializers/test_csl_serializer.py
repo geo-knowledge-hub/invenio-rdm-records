@@ -13,8 +13,10 @@ from citeproc_styles import get_style_filepath
 
 from invenio_rdm_records.proxies import current_rdm_records
 from invenio_rdm_records.records.api import RDMRecord
-from invenio_rdm_records.resources.serializers import CSLJSONSerializer, \
-    StringCitationSerializer
+from invenio_rdm_records.resources.serializers import (
+    CSLJSONSerializer,
+    StringCitationSerializer,
+)
 from invenio_rdm_records.resources.serializers.csl import get_citation_string
 from invenio_rdm_records.resources.serializers.csl.schema import CSLJSONSchema
 
@@ -37,7 +39,7 @@ def test_csl_json_serializer(running_app, full_record):
                 "given": "Lars Holm",
             }
         ],
-        "note": "Funding by European Commission ROR 1234.",
+        "note": "Funding by European Commission ROR 00k4n6c32.",
         "version": "v1.0",
         "type": "graphic",
         "id": "12345-abcde",
