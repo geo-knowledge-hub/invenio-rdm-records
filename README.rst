@@ -25,8 +25,12 @@
 
 DataCite-based data model for Invenio.
 
-Further documentation is available on
-https://invenio-rdm-records.readthedocs.io/
+About
+======
+
+This repository is a fork from the `Invenio RDM Records <https://github.com/inveniosoftware/invenio-rdm-records>`_ package developed by the `Invenio Team <https://github.com/inveniosoftware>`_. This fork incorporates GEO Knowledge Hub-specific features and modifications to the original package.
+
+We thank the `Invenio Team <https://github.com/inveniosoftware>`_ for making this mature software available to the entire community.
 
 Development
 ===========
@@ -38,9 +42,9 @@ Choose a version of elasticsearch and a DB, then run:
 
 .. code-block:: console
 
-    pipenv run pip install -e .[all]
-    pipenv run pip install invenio-search[<elasticsearch[5|6|7]>]
-    pipenv run pip install invenio-db[<[mysql|postgresql|]>,versioning]
+    pip install -e .
+    pip install invenio-search[elasticsearch7]
+    pip install invenio-db[<[mysql|postgresql|]>,versioning]
 
 
 Tests
@@ -48,4 +52,5 @@ Tests
 
 .. code-block:: console
 
-    pipenv run ./run-tests.sh
+    pip install -e .[tests]
+    ./run-tests.sh
