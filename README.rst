@@ -32,6 +32,15 @@ This repository is a fork from the `Invenio RDM Records <https://github.com/inve
 
 We thank the `Invenio Team <https://github.com/inveniosoftware>`_ for making this mature software available to the entire community.
 
+Versioning
+==========
+
+This fork is intended to make a few changes to the original source code. In general, we are working on adding extension points that can be used through configuration variables. With these specific changes, we can inject custom code (e.g., `Record class`, `Service class`, `Schemas`) and avoid abrupt changes to the package.
+
+Since these changes don't require several iterations in the code, given the excellent quality and organization of Invenio RDM Records, we are not creating new versions of the package. Instead, we are creating releases in the commits to which we have made changes. These releases are aligned with the versions of the `GEO Knowledge Hub <https://github.com/geo-knowledge-hub/geo-knowledge-hub>`_ package.
+
+We are following this approach to avoid conflicts between the modified code and the InvenioRDM modules that depend on Invenio RDM Records.
+
 Development
 ===========
 
