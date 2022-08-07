@@ -25,6 +25,7 @@ from invenio_rdm_records.oaiserver.services.config import OAIPMHServerServiceCon
 from invenio_rdm_records.oaiserver.services.services import OAIPMHServerService
 
 from . import config
+from .customizations import load_config_class
 from .resources import (
     IIIFResource,
     IIIFResourceConfig,
@@ -48,7 +49,6 @@ from .services.pids import PIDManager, PIDsService
 from .services.review.service import ReviewService
 from .services.schemas.metadata_extensions import MetadataExtensions
 
-from .customizations import load_config_class
 
 
 def verify_token():
@@ -157,7 +157,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMRecordServiceConfig,
                 import_string=True,
-                build=True
+                build=True,
             )
 
             file = load_config_class(
@@ -165,7 +165,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMFileRecordServiceConfig,
                 import_string=True,
-                build=True
+                build=True,
             )
 
             file_draft = load_config_class(
@@ -173,15 +173,9 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMFileDraftServiceConfig,
                 import_string=True,
-                build=True
+                build=True,
             )
 
-            affiliations = AffiliationsServiceConfig
-            names = NamesServiceConfig
-            subjects = SubjectsServiceConfig
-            record = RDMRecordServiceConfig.build(app)
-            file = RDMFileRecordServiceConfig.build(app)
-            file_draft = RDMFileDraftServiceConfig.build(app)
             oaipmh_server = OAIPMHServerServiceConfig
 
         return ServiceConfigs
@@ -194,7 +188,7 @@ class InvenioRDMRecords(object):
                 "RDM_RECORD_RESOURCE_CFG",
                 app,
                 default=RDMRecordResourceConfig,
-                import_string=True
+                import_string=True,
             )
 
             file = load_config_class(
@@ -215,27 +209,6 @@ class InvenioRDMRecords(object):
                 "RDM_PARENT_LINK_RESOURCE_CFG",
                 app,
                 default=RDMParentRecordLinksResourceConfig,
-                import_string=True,
-            )
-
-            affiliations = load_config_class(
-                "RDM_AFFILIATIONS_RESOURCE_CFG",
-                app,
-                default=AffiliationsResourceConfig,
-                import_string=True,
-            )
-
-            names = load_config_class(
-                "RDM_NAMES_RESOURCE_CFG",
-                app,
-                default=NamesResourceConfig,
-                import_string=True,
-            )
-
-            subjects = load_config_class(
-                "RDM_SUBJECTS_RESOURCE_CFG",
-                app,
-                default=SubjectsResourceConfig,
                 import_string=True,
             )
 
@@ -273,43 +246,27 @@ class InvenioRDMRecords(object):
 
         # Record files resource
         self.record_files_resource = FileResource(
-            service=self.records_service.files,
-            config=resource_configs.file
+            service=self.records_service.files, config=resource_configs.file
         )
 
         # Draft files resource
         self.draft_files_resource = FileResource(
-            service=self.records_service.draft_files,
-            config=resource_configs.file_draft
+            service=self.records_service.draft_files, config=resource_configs.file_draft
         )
 
         # Parent Records
         self.parent_record_links_resource = RDMParentRecordLinksResource(
-            service=self.records_service,
-            config=resource_configs.parent_link
+            service=self.records_service, config=resource_configs.parent_link
         )
 
-        # Vocabularies
-        self.affiliations_resource = AffiliationsResource(
-            service=self.affiliations_service,
-            config=resource_configs.affiliations,
         # OAI-PMH
         self.oaipmh_server_resource = OAIPMHServerResource(
-            service=self.oaipmh_server_service,
-            config=OAIPMHServerResourceConfig,
+            service=self.oaipmh_server_service, config=OAIPMHServerResourceConfig,
         )
-        self.names_resource = NamesResource(
-            service=self.names_service,
-            config=resource_configs.names,
 
         # IIIF
         self.iiif_resource = IIIFResource(
-            service=self.iiif_service,
-            config=IIIFResourceConfig,
-        )
-        self.subjects_resource = SubjectsResource(
-            service=self.subjects_service,
-            config=resource_configs.subjects,
+            service=self.iiif_service, config=IIIFResourceConfig,
         )
 
     def fix_datacite_configs(self, app):
