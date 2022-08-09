@@ -11,17 +11,14 @@
  Invenio-RDM-Records
 ====================
 
-.. image:: https://github.com/inveniosoftware/invenio-rdm-records/workflows/CI/badge.svg
-        :target: https://github.com/inveniosoftware/invenio-rdm-records/actions?query=workflow%3ACI+branch%3Amaster
+.. image:: https://github.com/geo-knowledge-hub/invenio-rdm-records/workflows/CI/badge.svg
+        :target: https://github.com/geo-knowledge-hub/invenio-rdm-records/actions?query=workflow%3ACI+branch%3Amaster
 
-.. image:: https://img.shields.io/github/tag/inveniosoftware/invenio-rdm-records.svg
-        :target: https://github.com/inveniosoftware/invenio-rdm-records/releases
+.. image:: https://img.shields.io/github/tag/geo-knowledge-hub/invenio-rdm-records.svg
+        :target: https://github.com/geo-knowledge-hub/invenio-rdm-records/releases
 
-.. image:: https://img.shields.io/pypi/dm/invenio-rdm-records.svg
-        :target: https://pypi.python.org/pypi/invenio-rdm-records
-
-.. image:: https://img.shields.io/github/license/inveniosoftware/invenio-rdm-records.svg
-        :target: https://github.com/inveniosoftware/invenio-rdm-records/blob/master/LICENSE
+.. image:: https://img.shields.io/github/license/geo-knowledge-hub/invenio-rdm-records.svg
+        :target: https://github.com/geo-knowledge-hub/invenio-rdm-records/blob/master/LICENSE
 
 DataCite-based data model for Invenio.
 
