@@ -12,14 +12,12 @@ from .access import AccessComponent
 from .metadata import MetadataComponent
 from .parent import ParentRecordAccessComponent
 from .pids import PIDsComponent
-from .relations import RelationsComponent
 from .review import ReviewComponent
 
 __all__ = (
-    'AccessComponent',
-    'MetadataComponent',
-    'ParentRecordAccessComponent',
-    'PIDsComponent',
-    'RelationsComponent',
-    'ReviewComponent',
+    "AccessComponent",
+    "MetadataComponent",
+    "ParentRecordAccessComponent",
+    "PIDsComponent",
+    "ReviewComponent",
 )
