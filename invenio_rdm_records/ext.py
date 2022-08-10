@@ -50,7 +50,6 @@ from .services.review.service import ReviewService
 from .services.schemas.metadata_extensions import MetadataExtensions
 
 
-
 def verify_token():
     """Verify the token and store it in the session if it's valid."""
     token = request.args.get("token", None)
@@ -261,12 +260,14 @@ class InvenioRDMRecords(object):
 
         # OAI-PMH
         self.oaipmh_server_resource = OAIPMHServerResource(
-            service=self.oaipmh_server_service, config=OAIPMHServerResourceConfig,
+            service=self.oaipmh_server_service,
+            config=OAIPMHServerResourceConfig,
         )
 
         # IIIF
         self.iiif_resource = IIIFResource(
-            service=self.iiif_service, config=IIIFResourceConfig,
+            service=self.iiif_service,
+            config=IIIFResourceConfig,
         )
 
     def fix_datacite_configs(self, app):
