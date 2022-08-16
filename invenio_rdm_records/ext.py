@@ -25,7 +25,7 @@ from invenio_rdm_records.oaiserver.services.config import OAIPMHServerServiceCon
 from invenio_rdm_records.oaiserver.services.services import OAIPMHServerService
 
 from . import config
-from .customizations import load_config_class
+from .customizations import load_class
 from .resources import (
     IIIFResource,
     IIIFResourceConfig,
@@ -147,11 +147,14 @@ class InvenioRDMRecords(object):
 
         self.fix_datacite_configs(app)
 
+    #
+    # Services generators
+    #
     def service_configs(self, app):
         """Customized service configs."""
 
-        class ServiceConfigs:
-            record = load_config_class(
+        class ClassContainer:
+            record = load_class(
                 "RDM_RECORD_SERVICE_CFG",
                 app,
                 default=RDMRecordServiceConfig,
@@ -159,15 +162,15 @@ class InvenioRDMRecords(object):
                 build=True,
             )
 
-            file = load_config_class(
-                "RDM_FILE_SERVICE_CFG",
+            file = load_class(
+                "RDServiceConfigsM_FILE_SERVICE_CFG",
                 app,
                 default=RDMFileRecordServiceConfig,
                 import_string=True,
                 build=True,
             )
 
-            file_draft = load_config_class(
+            file_draft = load_class(
                 "RDM_FILE_DRAFT_SERVICE_CFG",
                 app,
                 default=RDMFileDraftServiceConfig,
@@ -175,99 +178,202 @@ class InvenioRDMRecords(object):
                 build=True,
             )
 
-            oaipmh_server = OAIPMHServerServiceConfig
+            oaipmh = load_class(
+                "RDM_OAIPMH_SERVICE_CFG",
+                app,
+                default=OAIPMHServerServiceConfig,
+                import_string=True,
+            )
 
-        return ServiceConfigs
+        return ClassContainer
 
+    def service_classes(self, app):
+        """Service classes generator."""
+
+        class ClassContainer:
+            record = load_class(
+                "RDM_RECORD_SERVICE", app, default=RDMRecordService, import_string=True
+            )
+
+            iiif = load_class(
+                "RDM_IIIF_SERVICE", app, default=IIIFService, import_string=True
+            )
+
+            oiapmh = load_class(
+                "RDM_OIAPMH_SERVICE",
+                app,
+                default=OAIPMHServerService,
+                import_string=True,
+            )
+
+            file = load_class(
+                "RDM_FILE_SERVICE", app, default=FileService, import_string=True
+            )
+
+            secret_link = load_class(
+                "RDM_SECRET_LINK_SERVICE",
+                app,
+                default=SecretLinkService,
+                import_string=True,
+            )
+
+            pid = load_class(
+                "RDM_PID_SERVICE", app, default=PIDsService, import_string=True
+            )
+
+            review = load_class(
+                "RDM_REVIEW_SERVICE", app, default=ReviewService, import_string=True
+            )
+
+        return ClassContainer
+
+    #
+    # Resources generators
+    #
     def resource_configs(self, app):
         """Customized resources configs."""
 
-        class ResourceConfigs:
-            record = load_config_class(
+        class ClassContainer:
+            record = load_class(
                 "RDM_RECORD_RESOURCE_CFG",
                 app,
                 default=RDMRecordResourceConfig,
                 import_string=True,
             )
 
-            file = load_config_class(
+            file = load_class(
                 "RDM_FILE_RESOURCE_CFG",
                 app,
                 default=RDMRecordFilesResourceConfig,
                 import_string=True,
             )
 
-            file_draft = load_config_class(
+            file_draft = load_class(
                 "RDM_FILE_DRAFT_RESOURCE_CFG",
                 app,
                 default=RDMDraftFilesResourceConfig,
                 import_string=True,
             )
 
-            parent_link = load_config_class(
+            parent_link = load_class(
                 "RDM_PARENT_LINK_RESOURCE_CFG",
                 app,
                 default=RDMParentRecordLinksResourceConfig,
                 import_string=True,
             )
 
-        return ResourceConfigs
+            oiapmh = load_class(
+                "RDM_OIAPMH_RESOURCE_CFG",
+                app,
+                default=OAIPMHServerResourceConfig,
+                import_string=True,
+            )
+
+            iiif = load_class(
+                "RDM_IIIF_RESOURCE_CFG",
+                app,
+                default=IIIFResourceConfig,
+                import_string=True,
+            )
+
+        return ClassContainer
+
+    def resource_classes(self, app):
+        """Resource classes generator."""
+
+        class ClassContainer:
+            record = load_class(
+                "RDM_RECORD_RESOURCE",
+                app,
+                default=RDMRecordResource,
+                import_string=True,
+            )
+
+            file = load_class(
+                "RDM_FILE_RESOURCE",
+                app,
+                default=FileResource,
+                import_string=True,
+            )
+
+            parent_link = load_class(
+                "RDM_PARENT_RECORD_RESOURCE",
+                app,
+                default=RDMParentRecordLinksResource,
+                import_string=True,
+            )
+
+            oiapmh = load_class(
+                "RDM_OAIPMH_RESOURCE",
+                app,
+                default=OAIPMHServerResource,
+                import_string=True,
+            )
+
+            iiif = load_class(
+                "RDM_IIIF_RESOURCE", app, default=IIIFResource, import_string=True
+            )
+
+        return ClassContainer
 
     def init_services(self, app):
         """Initialize services."""
         service_configs = self.service_configs(app)
+        service_classes = self.service_classes(app)
 
         # Services
-        self.records_service = RDMRecordService(
+        self.records_service = service_classes.record(
             service_configs.record,
-            files_service=FileService(service_configs.file),
-            draft_files_service=FileService(service_configs.file_draft),
-            secret_links_service=SecretLinkService(service_configs.record),
-            pids_service=PIDsService(service_configs.record, PIDManager),
-            review_service=ReviewService(service_configs.record),
+            files_service=service_classes.file(service_configs.file),
+            draft_files_service=service_classes.file(service_configs.file_draft),
+            secret_links_service=service_classes.secret_link(service_configs.record),
+            pids_service=service_classes.pid(service_configs.record, PIDManager),
+            review_service=service_classes.review(service_configs.record),
         )
-        self.iiif_service = IIIFService(
+
+        self.iiif_service = service_classes.iiif(
             records_service=self.records_service, config=None
         )
 
-        self.oaipmh_server_service = OAIPMHServerService(
-            config=service_configs.oaipmh_server,
+        self.oaipmh_server_service = service_classes.oiapmh(
+            config=service_configs.oaipmh,
         )
 
     def init_resource(self, app):
         """Initialize vocabulary resources."""
         resource_configs = self.resource_configs(app)
+        resource_classes = self.resource_classes(app)
 
-        self.records_resource = RDMRecordResource(
+        self.records_resource = resource_classes.record(
             resource_configs.record,
             self.records_service,
         )
 
         # Record files resource
-        self.record_files_resource = FileResource(
+        self.record_files_resource = resource_classes.file(
             service=self.records_service.files, config=resource_configs.file
         )
 
         # Draft files resource
-        self.draft_files_resource = FileResource(
+        self.draft_files_resource = resource_classes.file(
             service=self.records_service.draft_files, config=resource_configs.file_draft
         )
 
         # Parent Records
-        self.parent_record_links_resource = RDMParentRecordLinksResource(
+        self.parent_record_links_resource = resource_classes.parent_link(
             service=self.records_service, config=resource_configs.parent_link
         )
 
         # OAI-PMH
-        self.oaipmh_server_resource = OAIPMHServerResource(
+        self.oaipmh_server_resource = resource_classes.oiapmh(
             service=self.oaipmh_server_service,
-            config=OAIPMHServerResourceConfig,
+            config=resource_configs.oiapmh,
         )
 
         # IIIF
-        self.iiif_resource = IIIFResource(
+        self.iiif_resource = resource_classes.iiif(
             service=self.iiif_service,
-            config=IIIFResourceConfig,
+            config=resource_configs.iiif,
         )
 
     def fix_datacite_configs(self, app):
