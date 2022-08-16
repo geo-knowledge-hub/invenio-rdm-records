@@ -11,9 +11,7 @@
 from invenio_base.utils import load_or_import_from_config
 
 
-def load_config_class(
-    config_key, app_ctx, default=None, import_string=False, build=False
-):
+def load_class(config_key, app_ctx, default=None, import_string=False, build=False):
     """Function to load services configuration.
 
     See:
