@@ -178,7 +178,12 @@ class InvenioRDMRecords(object):
                 build=True,
             )
 
-            oaipmh_server = OAIPMHServerServiceConfig
+            oaipmh = load_class(
+                "RDM_OAIPMH_SERVICE_CFG",
+                app,
+                default=OAIPMHServerServiceConfig,
+                import_string=True,
+            )
 
         return ClassContainer
 
@@ -257,6 +262,20 @@ class InvenioRDMRecords(object):
                 import_string=True,
             )
 
+            oiapmh = load_class(
+                "RDM_OIAPMH_RESOURCE_CFG",
+                app,
+                default=OAIPMHServerResourceConfig,
+                import_string=True,
+            )
+
+            iiif = load_class(
+                "RDM_IIIF_RESOURCE_CFG",
+                app,
+                default=IIIFResourceConfig,
+                import_string=True,
+            )
+
         return ClassContainer
 
     def resource_classes(self, app):
@@ -317,7 +336,7 @@ class InvenioRDMRecords(object):
         )
 
         self.oaipmh_server_service = service_classes.oiapmh(
-            config=service_configs.oaipmh_server,
+            config=service_configs.oaipmh,
         )
 
     def init_resource(self, app):
@@ -348,13 +367,13 @@ class InvenioRDMRecords(object):
         # OAI-PMH
         self.oaipmh_server_resource = resource_classes.oiapmh(
             service=self.oaipmh_server_service,
-            config=OAIPMHServerResourceConfig,
+            config=resource_configs.oiapmh,
         )
 
         # IIIF
         self.iiif_resource = resource_classes.iiif(
             service=self.iiif_service,
-            config=IIIFResourceConfig,
+            config=resource_configs.iiif,
         )
 
     def fix_datacite_configs(self, app):
