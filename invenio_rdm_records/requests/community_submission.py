@@ -11,6 +11,7 @@ from flask_babelex import lazy_gettext as _
 from invenio_records_resources.services.uow import RecordCommitOp, RecordIndexOp
 from invenio_requests.customizations import actions
 
+from ..proxies import current_rdm_records
 from ..proxies import current_rdm_records_service as service
 from .base import ReviewRequest
 
@@ -124,8 +125,25 @@ class ExpireAction(actions.CancelAction):
 #
 # Request
 #
+def build_action_class(action, default):
+    """Factory to generate action class based on user configuration."""
+
+    def _factory(*args, **kwargs):
+        action_class = getattr(current_rdm_records.community_actions, action)
+        action_class = action_class or default
+
+        return action_class(*args, **kwargs)
+
+    return _factory
+
+
 class CommunitySubmission(ReviewRequest):
-    """Review request for submitting a record to a community."""
+    """Review request for submitting a record to a community.
+
+    ToDo:
+        - Generalize the implementation to support other external
+        configurations (e.g., ``allowed_topic_ref_types``).
+    """
 
     type_id = "community-submission"
     name = _("Community submission")
@@ -137,17 +155,17 @@ class CommunitySubmission(ReviewRequest):
     topic_can_be_none = False
     allowed_creator_ref_types = ["user"]
     allowed_receiver_ref_types = ["community"]
-    allowed_topic_ref_types = ["record"]
+    allowed_topic_ref_types = ["record", "package"]
     needs_context = {
         "community_roles": ["owner", "manager", "curator"],
     }
 
     available_actions = {
-        "create": actions.CreateAction,
-        "submit": SubmitAction,
-        "delete": actions.DeleteAction,
-        "accept": AcceptAction,
-        "cancel": CancelAction,
-        "decline": DeclineAction,
-        "expire": ExpireAction,
+        "create": build_action_class("create", actions.CreateAction),
+        "submit": build_action_class("submit", SubmitAction),
+        "delete": build_action_class("delete", actions.DeleteAction),
+        "accept": build_action_class("accept", AcceptAction),
+        "cancel": build_action_class("cancel", CancelAction),
+        "decline": build_action_class("decline", DeclineAction),
+        "expire": build_action_class("expire", ExpireAction),
     }
