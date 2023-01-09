@@ -136,7 +136,7 @@ class FromConfigRequiredPIDs:
         pids = {
             scheme: conf
             for (scheme, conf) in pids.items()
-            if scheme != "doi" or doi_enabled
+            if scheme != "doi"
         }
         return [
             scheme for (scheme, conf) in pids.items() if conf.get("required", False)
