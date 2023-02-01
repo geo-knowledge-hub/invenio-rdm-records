@@ -251,6 +251,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMRecordResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             file = load_class(
@@ -258,6 +259,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMRecordFilesResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             file_draft = load_class(
@@ -265,6 +267,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMDraftFilesResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             parent_link = load_class(
@@ -272,6 +275,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMParentRecordLinksResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             oiapmh = load_class(
@@ -279,6 +283,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=OAIPMHServerResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             iiif = load_class(
@@ -286,6 +291,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=IIIFResourceConfig,
                 import_string=True,
+                build=True,
             )
 
         return ClassContainer
