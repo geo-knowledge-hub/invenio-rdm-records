@@ -72,6 +72,8 @@ class SearchOptions:
 class OAIPMHServerServiceConfig(ServiceConfig):
     """Service factory configuration."""
 
+    service_id = "oaipmh-server"
+
     # Common configuration
     permission_policy_cls = OAIPMHServerPermissionPolicy
     result_item_cls = OAISetItem
@@ -110,3 +112,5 @@ class OAIPMHServerServiceConfig(ServiceConfig):
         ),
         "oai-identify": Link("{+ui}/oai2d?verb=Identify"),
     }
+
+    reserved_prefixes = {"community-"}

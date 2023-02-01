@@ -12,15 +12,12 @@ from invenio_communities.records.records.systemfields import CommunitiesField
 from invenio_drafts_resources.records import Draft, Record
 from invenio_drafts_resources.records.api import ParentRecord as ParentRecordBase
 from invenio_pidstore.models import PIDStatus
-from invenio_records.dumpers import ElasticsearchDumper
+from invenio_records.dumpers import SearchDumper
 from invenio_records.dumpers.relations import RelationDumperExt
-from invenio_records.systemfields import (
-    ConstantField,
-    DictField,
-    ModelField,
-    RelationsField,
-)
+from invenio_records.systemfields import ConstantField, DictField, ModelField
+from invenio_records.systemfields.relations import MultiRelationsField
 from invenio_records_resources.records.api import FileRecord
+from invenio_records_resources.records.dumpers import CustomFieldsDumperExt
 from invenio_records_resources.records.systemfields import (
     FilesField,
     IndexField,
@@ -36,12 +33,12 @@ from invenio_vocabularies.contrib.awards.api import Award
 from invenio_vocabularies.contrib.funders.api import Funder
 from invenio_vocabularies.contrib.subjects.api import Subject
 from invenio_vocabularies.records.api import Vocabulary
-
-from invenio_rdm_records.records.systemfields.draft_status import DraftStatus
+from invenio_vocabularies.records.systemfields.relations import CustomFieldsRelation
 
 from . import models
 from .dumpers import EDTFDumperExt, EDTFListDumperExt, GrantTokensDumperExt
 from .systemfields import HasDraftCheckField, ParentRecordAccessField, RecordAccessField
+from .systemfields.draft_status import DraftStatus
 
 
 #
@@ -53,7 +50,7 @@ class RDMParent(ParentRecordBase):
     # Configuration
     model_cls = models.RDMParentMetadata
 
-    dumper = ElasticsearchDumper(
+    dumper = SearchDumper(
         extensions=[
             GrantTokensDumperExt("access.grant_tokens"),
         ]
@@ -83,15 +80,16 @@ class CommonFieldsMixin:
 
     schema = ConstantField("$schema", "local://records/record-v5.0.0.json")
 
-    dumper = ElasticsearchDumper(
+    dumper = SearchDumper(
         extensions=[
             EDTFDumperExt("metadata.publication_date"),
             EDTFListDumperExt("metadata.dates", "date"),
             RelationDumperExt("relations"),
+            CustomFieldsDumperExt(fields_var="RDM_CUSTOM_FIELDS"),
         ]
     )
 
-    relations = RelationsField(
+    relations = MultiRelationsField(
         creator_affiliations=PIDNestedListRelation(
             "metadata.creators",
             relation_field="affiliations",
@@ -209,6 +207,7 @@ class CommonFieldsMixin:
             cache_key="relation_types",
             relation_field="relation_type",
         ),
+        custom=CustomFieldsRelation("RDM_CUSTOM_FIELDS"),
     )
 
     bucket_id = ModelField(dump=False)
@@ -220,6 +219,9 @@ class CommonFieldsMixin:
     is_published = PIDStatusCheckField(status=PIDStatus.REGISTERED, dump=True)
 
     pids = DictField("pids")
+
+    #: Custom fields system field.
+    custom_fields = DictField(clear_none=True, create_if_missing=True)
 
 
 #

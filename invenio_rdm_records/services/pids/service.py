@@ -44,7 +44,7 @@ class PIDsService(RecordService):
         - limit side-effects (in case using pre-existing `pid_manager` would
                               cause some.)
         """
-        return self.manager_cls(self.config.pids_providers)
+        return self.manager_cls(self.config.pids_providers, self.config.pids_required)
 
     @property
     def pid_manager(self):
@@ -138,7 +138,7 @@ class PIDsService(RecordService):
         else:
             self.require_permission(identity, "pid_register", record=record)
             # Determine landing page (use scheme specific if available)
-            links = self.links_item_tpl.expand(record)
+            links = self.links_item_tpl.expand(identity, record)
             url = links["self_html"]
             if f"self_{scheme}" in links:
                 url = links[f"self_{scheme}"]
@@ -164,7 +164,6 @@ class PIDsService(RecordService):
         """
         draft = self.draft_cls.pid.resolve(id_, registered_only=False)
         self.require_permission(identity, "pid_discard", record=draft, scheme=scheme)
-        self.pid_manager.validate(draft.pids, draft, raise_errors=True)
         identifier = draft.pids.get(scheme, {}).get("identifier")
         self._manager.discard(scheme, identifier, provider)
         draft.pids.pop(scheme)

@@ -135,9 +135,10 @@ class PIDProvider:
     def validate(self, record, identifier=None, provider=None, **kwargs):
         """Validate the attributes of the identifier.
 
-        :returns: A tuple (success, errors). The first specifies if the
-                  validation was passed successfully. The second one is an
-                  array of error messages.
+        :returns: A tuple (success, errors). `success` is a bool that specifies
+                  if the validation was successful. `errors` is a list of
+                  error dicts of the form:
+                  `{"field": <field>, "messages: ["<msgA1>", ...]}`.
         """
         if provider and provider != self.name:
             current_app.logger.error(
@@ -155,12 +156,45 @@ class PIDProvider:
                     f"PID {self.pid_type}:{identifier} already exists"
                 )
                 return False, [
-                    _("{pid_type}:{identifier} already exists.").format(
-                        pid_type=self.pid_type, identifier=identifier
-                    )
+                    # Note that this uses self.pid_type which is not dynamically
+                    # assigned from config.py::RDM_PERSISTENT_IDENTIFIERS, so there
+                    # may come a time where there is a mismatch between the two.
+                    {
+                        "field": f"pids.{self.pid_type}",
+                        "messages": [
+                            _("{pid_type}:{identifier} already exists.").format(
+                                pid_type=self.pid_type, identifier=identifier
+                            )
+                        ],
+                    }
                 ]
-
         except PIDDoesNotExistError:
             pass
 
         return True, []
+
+    def _insert_pid_type_error_msg(self, errors, error_msg):
+        """Adds error_msg to "messages" field of pid_type's error_dict in errors.
+
+        This error dict is either:
+        - retrieved from errors OR
+        - created and appended to errors
+
+        This is really a utility method for children providers in order
+        to append pid identifier error messages to the pid identifier error_dict
+        (as opposed to creating a new error dict).
+
+        :param errors: list of error dicts of the form `{"field": ..., "messages": ...}`
+        :param error_msg: string OR list of strings
+        """
+        field = f"pids.{self.pid_type}"
+        error = next((error for error in errors if error.get("field") == field), None)
+
+        if not error:
+            error = {"field": field, "messages": []}
+            errors.append(error)
+
+        if isinstance(error_msg, list):
+            error["messages"].extend(error_msg)
+        else:
+            error["messages"].append(error_msg)
