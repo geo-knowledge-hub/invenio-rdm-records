@@ -48,12 +48,13 @@ from invenio_access.models import ActionRoles
 from invenio_access.permissions import superuser_access, system_identity
 from invenio_accounts.models import Role
 from invenio_accounts.testutils import login_user_via_session
-from invenio_admin.permissions import action_admin_access
+from invenio_administration.permissions import administration_access_action
 from invenio_app.factory import create_app as _create_app
 from invenio_cache import current_cache
 from invenio_communities import current_communities
 from invenio_communities.communities.records.api import Community
 from invenio_records_resources.proxies import current_service_registry
+from invenio_records_resources.services.custom_fields import TextCF
 from invenio_vocabularies.contrib.affiliations.api import Affiliation
 from invenio_vocabularies.contrib.awards.api import Award
 from invenio_vocabularies.contrib.funders.api import Funder
@@ -152,11 +153,6 @@ class UserFixture_:
     def app_logout(self):
         """Create identity for the user."""
         assert logout_user()
-
-    @identity.deleter
-    def identity(self):
-        """Delete the user."""
-        self._identity = None
 
     #
     # Test client helpers
@@ -297,6 +293,23 @@ def app_config(app_config):
         ),
     ]
 
+    # Custom fields
+    app_config["RDM_CUSTOM_FIELDS"] = [
+        TextCF(name="cern:myfield", use_as_filter=True),
+    ]
+    app_config["RDM_NAMESPACES"] = {
+        "cern": "https://home.cern/",
+    }
+
+    # Storage classes
+    app_config["FILES_REST_STORAGE_CLASS_LIST"] = {
+        "L": "Local",
+        "F": "Fetch",
+        "R": "Remote",
+    }
+
+    app_config["FILES_REST_DEFAULT_STORAGE_CLASS"] = "L"
+
     return app_config
 
 
@@ -306,8 +319,8 @@ def create_app(instance_path):
     return _create_app
 
 
-def _es_create_indexes(current_search, current_search_client):
-    """Create all registered Elasticsearch indexes."""
+def _search_create_indexes(current_search, current_search_client):
+    """Create all registered search indexes."""
     to_create = [
         RDMRecord.index._name,
         RDMDraft.index._name,
@@ -318,8 +331,8 @@ def _es_create_indexes(current_search, current_search_client):
     current_search_client.indices.refresh()
 
 
-def _es_delete_indexes(current_search):
-    """Delete all registered Elasticsearch indexes."""
+def _search_delete_indexes(current_search):
+    """Delete all registered search indexes."""
     to_delete = [
         RDMRecord.index._name,
         RDMDraft.index._name,
@@ -331,17 +344,17 @@ def _es_delete_indexes(current_search):
 # overwrite pytest_invenio.fixture to only delete record indices
 # keeping vocabularies.
 @pytest.fixture(scope="function")
-def es_clear(es):
-    """Clear Elasticsearch indices after test finishes (function scope).
+def search_clear(search):
+    """Clear search indices after test finishes (function scope).
 
     This fixture rollback any changes performed to the indexes during a test,
-    in order to leave Elasticsearch in a clean state for the next test.
+    in order to leave search in a clean state for the next test.
     """
     from invenio_search import current_search, current_search_client
 
-    yield es
-    _es_delete_indexes(current_search)
-    _es_create_indexes(current_search, current_search_client)
+    yield search
+    _search_delete_indexes(current_search)
+    _search_create_indexes(current_search, current_search_client)
 
 
 @pytest.fixture(scope="function")
@@ -520,8 +533,6 @@ def minimal_record():
             "enabled": False,  # Most tests don't care about files
         },
         "metadata": {
-            "publication_date": "2020-06-01",
-            "resource_type": {"id": "image-photo"},
             "creators": [
                 {
                     "person_or_org": {
@@ -537,6 +548,10 @@ def minimal_record():
                     },
                 },
             ],
+            "publication_date": "2020-06-01",
+            # because DATACITE_ENABLED is True, this field is required
+            "publisher": "Acme Inc",
+            "resource_type": {"id": "image-photo"},
             "title": "A Romans story",
         },
     }
@@ -1034,7 +1049,7 @@ def awards_v(app, funders_v):
     award = awards_service.create(
         system_identity,
         {
-            "id": "755021",
+            "id": "00k4n6c32::755021",
             "identifiers": [
                 {
                     "identifier": "https://cordis.europa.eu/project/id/755021",
@@ -1172,10 +1187,10 @@ def admin_role_need(db):
          If no User/Role is associated with that Need (in the DB), the
          permission is expanded to an empty list.
     """
-    role = Role(name="admin-access")
+    role = Role(name="administration-access")
     db.session.add(role)
 
-    action_role = ActionRoles.create(action=action_admin_access, role=role)
+    action_role = ActionRoles.create(action=administration_access_action, role=role)
     db.session.add(action_role)
 
     db.session.commit()
@@ -1298,7 +1313,7 @@ def admin(UserFixture, app, db, admin_role_need):
     u.create(app, db)
 
     datastore = app.extensions["security"].datastore
-    _, role = datastore._prepare_role_modify_args(u.user, "admin-access")
+    _, role = datastore._prepare_role_modify_args(u.user, "administration-access")
 
     datastore.add_role_to_user(u.user, role)
     db.session.commit()

@@ -16,97 +16,8 @@ from .services import facets
 from .services.permissions import RDMRecordPermissionPolicy
 from .services.pids import providers
 
-# Files REST
-
-# FILES_REST_PERMISSION_FACTORY = record_files_permission_factory
-"""Set default files permission factory."""
-
 # Invenio-RDM-Records
 # ===================
-
-RDM_RECORDS_METADATA_NAMESPACES = {}
-"""Namespaces for fields *added* to the metadata schema.
-
-Of the shape:
-
-.. code-block:: python
-
-    {
-        '<prefix1>': {
-            '@context': '<url>'
-        },
-        # ...
-        '<prefixN>': {
-            '@context': '<url>'
-        }
-    }
-
-For example:
-
-.. code-block:: python
-
-    {
-        'dwc': {
-            '@context': 'http://rs.tdwg.org/dwc/terms/'
-        },
-        'z':{
-            '@context': 'https://zenodo.org/terms'
-        }
-    }
-
-Use :const:`invenio_rdm_records.config.RDM_RECORDS_METADATA_EXTENSIONS` to
-define the added fields.
-
-See :class:`invenio_rdm_records.services.schemas.\
-metadata_extensions.MetadataExtensions` for
-how this configuration variable is used.
-"""
-
-RDM_RECORDS_METADATA_EXTENSIONS = {}
-"""Fields added to the metadata schema.
-
-Of the shape:
-
-.. code-block:: python
-
-    {
-        '<prefix1>:<field1>': {
-            'elasticsearch': '<allowed elasticsearch type>'
-            'marshmallow': '<allowed marshmallow type>'
-        },
-        # ...
-        '<prefixN>:<fieldN>': {
-            'elasticsearch': '<allowed elasticsearch type>'
-            'marshmallow': '<allowed marshmallow type>'
-        }
-    }
-
-For example:
-
-.. code-block:: python
-
-    {
-        'dwc:family': {
-            'elasticsearch': 'keyword',
-            'marshmallow': SanitizedUnicode()
-        },
-        'dwc:behavior': {
-            'elasticsearch': 'text',
-            'marshmallow': SanitizedUnicode()
-        },
-        'z:department': {
-            'elasticsearch': 'text',
-            'marshmallow': SanitizedUnicode()
-        }
-    }
-
-Use :const:`invenio_rdm_records.config.RDM_RECORDS_METADATA_NAMESPACES` to
-define the prefixes.
-
-See :class:`invenio_rdm_records.services.schemas.\
-metadata_extensions.MetadataExtensions` for
-allowed types and how this configuration variable is used.
-"""
 
 RDM_RECORDS_USER_FIXTURE_PASSWORDS = {"admin@inveniosoftware.org": None}
 """Overrides for the user fixtures' passwords.
@@ -122,6 +33,9 @@ will be generated randomly.
 
 RDM_RECORDS_UI_EDIT_URL = "/uploads/<pid_value>"
 """Default UI URL for the edit page of a Bibliographic Record."""
+
+RDM_ARCHIVE_DOWNLOAD_ENABLED = True
+"""Flag to enable/disable the all-in-one download endpoint."""
 
 #: Default site URL (used only when not in a context - e.g. like celery tasks).
 THEME_SITEURL = "http://127.0.0.1:5000"
@@ -249,7 +163,7 @@ RDM_FACETS = {
 RDM_SORT_OPTIONS = {
     "bestmatch": dict(
         title=_("Best match"),
-        fields=["_score"],  # ES defaults to desc on `_score` field
+        fields=["_score"],  # search defaults to desc on `_score` field
     ),
     "newest": dict(
         title=_("Newest"),
@@ -318,6 +232,37 @@ RDM_SEARCH_VERSIONING = {
     "sort_default_no_query": "version",
 }
 """Records versions search configuration (list of versions for a record)."""
+
+#
+# OAI-PMH Search configuration
+#
+RDM_OAI_PMH_FACETS = {}
+
+RDM_OAI_PMH_SORT_OPTIONS = {
+    "name": dict(
+        title=_("Set name"),
+        fields=["name"],
+    ),
+    "spec": dict(
+        title=_("Set spec"),
+        fields=["spec"],
+    ),
+    "created": dict(
+        title=_("Created"),
+        fields=["created"],
+    ),
+    "updated": dict(
+        title=_("Updated"),
+        fields=["updated"],
+    ),
+}
+"""Definitions of available OAI-PMH sort options. """
+
+RDM_OAI_PMH_SEARCH = {
+    "facets": [],
+    "sort": ["name", "spec", "created", "updated"],
+}
+"""OAI-PMH search configuration."""
 
 #
 # Persistent identifiers configuration
@@ -420,4 +365,84 @@ DATACITE_DATACENTER_SYMBOL = ""
 
 This is only required if you want your records to be harvestable (OAI-PMH)
 in DataCite XML format.
+"""
+
+#
+# Custom fields
+#
+RDM_NAMESPACES = {}
+"""Custom fields namespaces.
+
+.. code-block:: python
+
+    {<namespace>: <uri>, ...}
+
+For example:
+
+.. code-block:: python
+
+    {
+        "cern": "https://cern.ch/terms",
+        "dwc": "http://rs.tdwg.org/dwc/terms/"
+    }
+
+"""
+
+RDM_CUSTOM_FIELDS = []
+"""Records custom fields definition.
+
+.. code-block:: python
+
+    [<custom-field-class-type>, <custom-field-class-type>, ...]
+
+For example:
+
+.. code-block:: python
+
+    [TextCF(name="experiment"), ...]
+"""
+
+RDM_CUSTOM_FIELDS_UI = []
+"""Upload form custom fields UI configuration.
+
+Of the shape:
+
+.. code-block:: python
+
+    [{
+        section: <section_name>,
+        fields: [
+            {
+                field: "path-to-field",  # this should be validated against the defined fields in `RDM_CUSTOM_FIELDS`
+                ui_widget: "<ui-widget-name>",  # predefined or user defined ui widget
+                props: {
+                    label:"<ui-label-to-display>",
+                    placeholder:"<placeholder-passed-to-widget>",
+                    icon:"<icon-passed-to-widget>",
+                    description:"<description-passed-to-widget>",
+                }
+            },
+        ],
+
+        # ...
+    }]
+
+For example:
+
+.. code-block:: python
+
+    [{
+        "section": "CERN Experiment"
+        "fields" : [{
+            field: "experiment",  # this should be validated against the defined fields in `RDM_CUSTOM_FIELDS`
+            ui_widget: "CustomTextField",  # user defined widget in my-site
+            props: {
+                label: "Experiment",
+                placeholder: "Type an experiment...",
+                icon: "pencil",
+                description: "You should fill this field with one of the experiments e.g LHC, ATLAS etc.",
+            }
+        },
+        ...
+    }]
 """

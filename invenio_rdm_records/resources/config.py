@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2020-2021 CERN.
+# Copyright (C) 2020-2022 CERN.
 # Copyright (C) 2020-2021 Northwestern University.
 # Copyright (C) 2022 Universität Hamburg.
 #
@@ -14,7 +14,9 @@ from citeproc_styles import StyleNotFoundError
 from flask_babelex import lazy_gettext as _
 from flask_resources import (
     HTTPJSONException,
+    JSONDeserializer,
     JSONSerializer,
+    RequestBodyParser,
     ResourceConfig,
     ResponseHandler,
     create_error_handler,
@@ -23,14 +25,19 @@ from flask_resources import (
 from invenio_drafts_resources.resources import RecordResourceConfig
 from invenio_records.systemfields.relations import InvalidRelationValue
 from invenio_records_resources.resources.files import FileResourceConfig
+from invenio_records_resources.services.base.config import ConfiguratorMixin, FromConfig
 
 from ..services.errors import (
     ReviewExistsError,
     ReviewInconsistentAccessRestrictions,
     ReviewNotFoundError,
     ReviewStateError,
+    ValidationErrorWithMessageAsList,
 )
 from .args import RDMSearchRequestArgsSchema
+from .deserializers import ROCrateJSONDeserializer
+from .deserializers.errors import DeserializerError
+from .errors import HTTPJSONValidationWithMessageAsListException
 from .serializers import (
     CSLJSONSerializer,
     DataCite43JSONSerializer,
@@ -70,7 +77,7 @@ record_serializers = {
 #
 # Records and record versions
 #
-class RDMRecordResourceConfig(RecordResourceConfig):
+class RDMRecordResourceConfig(RecordResourceConfig, ConfiguratorMixin):
     """Record resource configuration."""
 
     blueprint_name = "records"
@@ -96,11 +103,24 @@ class RDMRecordResourceConfig(RecordResourceConfig):
         "locale": ma.fields.Str(),
     }
 
+    request_body_parsers = {
+        "application/json": RequestBodyParser(JSONDeserializer()),
+        'application/ld+json;profile="https://w3id.org/ro/crate/1.1"': RequestBodyParser(
+            ROCrateJSONDeserializer()
+        ),
+    }
+
     request_search_args = RDMSearchRequestArgsSchema
 
     response_handlers = record_serializers
 
     error_handlers = {
+        DeserializerError: create_error_handler(
+            lambda exc: HTTPJSONException(
+                code=400,
+                description=exc.args[0],
+            )
+        ),
         StyleNotFoundError: create_error_handler(
             HTTPJSONException(
                 code=400,
@@ -137,16 +157,20 @@ class RDMRecordResourceConfig(RecordResourceConfig):
                 description=exc.args[0],
             )
         ),
+        ValidationErrorWithMessageAsList: create_error_handler(
+            lambda e: HTTPJSONValidationWithMessageAsListException(e)
+        ),
     }
 
 
 #
 # Record files
 #
-class RDMRecordFilesResourceConfig(FileResourceConfig):
+class RDMRecordFilesResourceConfig(FileResourceConfig, ConfiguratorMixin):
     """Bibliographic record files resource config."""
 
     allow_upload = False
+    allow_archive_download = FromConfig("RDM_ARCHIVE_DOWNLOAD_ENABLED", True)
     blueprint_name = "record_files"
     url_prefix = "/records/<pid_value>"
 
@@ -154,9 +178,10 @@ class RDMRecordFilesResourceConfig(FileResourceConfig):
 #
 # Draft files
 #
-class RDMDraftFilesResourceConfig(FileResourceConfig):
+class RDMDraftFilesResourceConfig(FileResourceConfig, ConfiguratorMixin):
     """Bibliographic record files resource config."""
 
+    allow_archive_download = FromConfig("RDM_ARCHIVE_DOWNLOAD_ENABLED", True)
     blueprint_name = "draft_files"
     url_prefix = "/records/<pid_value>/draft"
 
@@ -179,7 +204,7 @@ record_links_error_handlers.update(
 )
 
 
-class RDMParentRecordLinksResourceConfig(RecordResourceConfig):
+class RDMParentRecordLinksResourceConfig(RecordResourceConfig, ConfiguratorMixin):
     """User records resource configuration."""
 
     blueprint_name = "record_access"
@@ -203,7 +228,7 @@ class RDMParentRecordLinksResourceConfig(RecordResourceConfig):
     error_handlers = record_links_error_handlers
 
 
-class IIIFResourceConfig(ResourceConfig):
+class IIIFResourceConfig(ResourceConfig, ConfiguratorMixin):
     """IIIF resource configuration."""
 
     blueprint_name = "iiif"

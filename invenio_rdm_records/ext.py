@@ -48,7 +48,6 @@ from .services import (
 )
 from .services.pids import PIDManager, PIDsService
 from .services.review.service import ReviewService
-from .services.schemas.metadata_extensions import MetadataExtensions
 
 
 def verify_token():
@@ -79,6 +78,16 @@ def on_identity_loaded(sender, identity):
         identity.provides.add(LinkNeed(token_data["id"]))
 
 
+from flask import Blueprint
+
+blueprint = Blueprint(
+    "invenio_rdm_records",
+    __name__,
+    template_folder="templates",
+    static_folder="static",
+)
+
+
 class InvenioRDMRecords(object):
     """Invenio-RDM-Records extension."""
 
@@ -90,15 +99,12 @@ class InvenioRDMRecords(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
-        self.metadata_extensions = MetadataExtensions(
-            app.config["RDM_RECORDS_METADATA_NAMESPACES"],
-            app.config["RDM_RECORDS_METADATA_EXTENSIONS"],
-        )
         self.init_services(app)
         self.init_resource(app)
         self.init_community_actions(app)
         app.before_request(verify_token)
         app.extensions["invenio-rdm-records"] = self
+        app.register_blueprint(blueprint)
         # Load flask IIIF
         IIIF(app)
 
@@ -119,6 +125,10 @@ class InvenioRDMRecords(object):
                 or k.startswith("DATACITE_")
             ):
                 app.config.setdefault(k, getattr(config, k))
+
+        # set default communities namespaces to the global RDM_NAMESPACES
+        if not app.config.get("COMMUNITIES_NAMESPACES"):
+            app.config["COMMUNITIES_NAMESPACES"] = app.config["RDM_NAMESPACES"]
 
         # Deprecations
         # Remove when v6.0 LTS is no longer supported.
@@ -241,6 +251,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMRecordResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             file = load_class(
@@ -248,6 +259,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMRecordFilesResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             file_draft = load_class(
@@ -255,6 +267,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMDraftFilesResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             parent_link = load_class(
@@ -262,6 +275,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=RDMParentRecordLinksResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             oiapmh = load_class(
@@ -269,6 +283,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=OAIPMHServerResourceConfig,
                 import_string=True,
+                build=True,
             )
 
             iiif = load_class(
@@ -276,6 +291,7 @@ class InvenioRDMRecords(object):
                 app,
                 default=IIIFResourceConfig,
                 import_string=True,
+                build=True,
             )
 
         return ClassContainer

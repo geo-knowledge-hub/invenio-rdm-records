@@ -16,12 +16,13 @@ import tempfile
 
 import arrow
 import importlib_metadata as metadata
-from elasticsearch_dsl.query import Q
 from flask_iiif.api import IIIFImageAPIWrapper
+from invenio_communities import current_communities
 from invenio_drafts_resources.services.records import RecordService
 from invenio_records_resources.services import LinksTemplate, Service
 from invenio_records_resources.services.uow import RecordCommitOp, unit_of_work
 from invenio_requests.services.results import EntityResolverExpandableField
+from invenio_search.engine import dsl
 
 from invenio_rdm_records.services.errors import EmbargoNotLiftedError
 from invenio_rdm_records.services.results import ParentCommunitiesExpandableField
@@ -127,10 +128,13 @@ class RDMRecordService(RecordService):
         return self.scan(identity=identity, q=embargoed_q)
 
     def search_community_records(
-        self, identity, community_id, params=None, es_preference=None, **kwargs
+        self, identity, community_id, params=None, search_preference=None, **kwargs
     ):
         """Search for records published in the given community."""
         self.require_permission(identity, "read")
+        current_communities.service.record_cls.pid.resolve(
+            community_id
+        )  # Checks weather community exists
 
         # Prepare and execute the search
         params = params or {}
@@ -139,10 +143,10 @@ class RDMRecordService(RecordService):
             "search",
             identity,
             params,
-            es_preference,
+            search_preference,
             record_cls=self.record_cls,
             search_opts=self.config.search,
-            extra_filter=Q("term", **{"parent.communities.ids": str(community_id)}),
+            extra_filter=dsl.Q("term", **{"parent.communities.ids": str(community_id)}),
             permission_action="read",
             **kwargs,
         ).execute()

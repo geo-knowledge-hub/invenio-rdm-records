@@ -10,20 +10,61 @@
 """Invenio-RDM-Records Permissions Generators."""
 
 import operator
+from abc import abstractmethod
 from functools import reduce
 from itertools import chain
 
-from elasticsearch_dsl import Q
 from flask_principal import UserNeed
 from invenio_access.permissions import authenticated_user
 from invenio_communities.generators import CommunityRoleNeed, CommunityRoles
 from invenio_communities.proxies import current_roles
 from invenio_records_permissions.generators import Generator
+from invenio_records_resources.services.files.transfer import TransferType
+from invenio_search.engine import dsl
 
 from invenio_rdm_records.records import RDMDraft
 
 
-class IfRestricted(Generator):
+class ConditionalGenerator(Generator):
+    """Generator that depends on whether a condition is true or not.
+
+    If...(
+        then_=[...],
+        else_=[...],
+    )
+    """
+
+    def __init__(self, then_, else_):
+        """Constructor."""
+        self.then_ = then_
+        self.else_ = else_
+
+    @abstractmethod
+    def _condition(self, **kwargs):
+        """Condition to choose generators set."""
+        pass
+
+    def _generators(self, record, **kwargs):
+        """Get the "then" or "else" generators."""
+        return self.then_ if self._condition(record=record, **kwargs) else self.else_
+
+    def needs(self, record=None, **kwargs):
+        """Set of Needs granting permission."""
+        needs = [
+            g.needs(record=record, **kwargs) for g in self._generators(record, **kwargs)
+        ]
+        return set(chain.from_iterable(needs))
+
+    def excludes(self, record=None, **kwargs):
+        """Set of Needs denying permission."""
+        excludes = [
+            g.excludes(record=record, **kwargs)
+            for g in self._generators(record, **kwargs)
+        ]
+        return set(chain.from_iterable(excludes))
+
+
+class IfRestricted(ConditionalGenerator):
     """IfRestricted.
 
     IfRestricted(
@@ -41,27 +82,16 @@ class IfRestricted(Generator):
     def __init__(self, field, then_, else_):
         """Constructor."""
         self.field = field
-        self.then_ = then_
-        self.else_ = else_
+        super().__init__(then_, else_)
 
-    def generators(self, record):
-        """Get the "then" or "else" generators."""
+    def _condition(self, record, **kwargs):
+        """Check if the record is restricted."""
         if record is None:
             # TODO - when permissions on links are checked, the record is not
             # passes properly, causing below ``record.access`` to fail.
-            return self.else_
+            return False
         is_restricted = getattr(record.access.protection, self.field, "restricted")
-        return self.then_ if is_restricted == "restricted" else self.else_
-
-    def needs(self, record=None, **kwargs):
-        """Set of Needs granting permission."""
-        needs = [g.needs(record=record, **kwargs) for g in self.generators(record)]
-        return set(chain.from_iterable(needs))
-
-    def excludes(self, record=None, **kwargs):
-        """Set of Needs denying permission."""
-        needs = [g.excludes(record=record, **kwargs) for g in self.generators(record)]
-        return set(chain.from_iterable(needs))
+        return is_restricted == "restricted"
 
     def make_query(self, generators, **kwargs):
         """Make a query for one set of generators."""
@@ -71,8 +101,8 @@ class IfRestricted(Generator):
 
     def query_filter(self, **kwargs):
         """Filters for current identity as super user."""
-        q_restricted = Q("match", **{f"access.{self.field}": "restricted"})
-        q_public = Q("match", **{f"access.{self.field}": "public"})
+        q_restricted = dsl.Q("match", **{f"access.{self.field}": "restricted"})
+        q_public = dsl.Q("match", **{f"access.{self.field}": "public"})
         then_query = self.make_query(self.then_, **kwargs)
         else_query = self.make_query(self.else_, **kwargs)
 
@@ -84,6 +114,44 @@ class IfRestricted(Generator):
             return q_public & else_query
         else:
             return q_public
+
+
+class IfDraft(ConditionalGenerator):
+    """Generator that depends on whether the record is a draft or not.
+
+    IfDraft(
+        then_=[...],
+        else_=[...],
+    )
+
+    This might be a temporary hack or the way to go.
+    """
+
+    def _condition(self, record, **kwargs):
+        """Check if the record is a draft."""
+        return isinstance(record, RDMDraft)
+
+
+class IfFileIsLocal(ConditionalGenerator):
+    """Conditional generator for file storage class."""
+
+    def _condition(self, record, file_key=None, **kwargs):
+        """Check if the record is a draft."""
+        is_file_local = True
+        if file_key:
+            file_record = record.files.get(file_key)
+            # file_record __bool__ returns false for `if file_record`
+            file = file_record.file if file_record is not None else None
+            is_file_local = not file or file.storage_class == TransferType.LOCAL
+        else:
+            file_records = record.files.entries
+            for file_record in file_records:
+                file = file_record.file
+                if file and file.storage_class != TransferType.LOCAL:
+                    is_file_local = False
+                    break
+
+        return is_file_local
 
 
 class RecordOwners(Generator):
@@ -102,51 +170,7 @@ class RecordOwners(Generator):
         """Filters for current identity as owner."""
         users = [n.value for n in identity.provides if n.method == "id"]
         if users:
-            return Q("terms", **{"parent.access.owned_by.user": users})
-
-
-class IfDraft(Generator):
-    """Generator that depends on whether the record is a draft or not.
-
-    IfDraft(
-        then_=[...],
-        else_=[...],
-    )
-
-    This might be a temporary hack or the way to go.
-    """
-
-    def __init__(self, then_, else_):
-        """Constructor."""
-        self.then_ = then_
-        self.else_ = else_
-
-    def _generators(self, record):
-        """Get the "then" or "else" generators."""
-        return self.then_ if isinstance(record, RDMDraft) else self.else_
-
-    def needs(self, record=None, **kwargs):
-        """Set of Needs granting permission."""
-        return list(
-            set(
-                chain.from_iterable(
-                    [g.needs(record=record, **kwargs) for g in self._generators(record)]
-                )
-            )
-        )
-
-    def excludes(self, record=None, **kwargs):
-        """Set of Needs denying permission."""
-        return list(
-            set(
-                chain.from_iterable(
-                    [
-                        g.excludes(record=record, **kwargs)
-                        for g in self._generators(record)
-                    ]
-                )
-            )
-        )
+            return dsl.Q("terms", **{"parent.access.owned_by.user": users})
 
 
 class SecretLinks(Generator):
@@ -168,7 +192,7 @@ class SecretLinks(Generator):
         secret_links = [n.value for n in identity.provides if n.method == "link"]
 
         if secret_links:
-            return Q("terms", **{"parent.access.links.id": secret_links})
+            return dsl.Q("terms", **{"parent.access.links.id": secret_links})
 
 
 class SubmissionReviewer(Generator):
@@ -222,4 +246,4 @@ class CommunityAction(CommunityRoles):
 
     def query_filter(self, identity=None, **kwargs):
         """Filters for current identity as member."""
-        return Q("terms", **{"parent.communities.ids": self.communities(identity)})
+        return dsl.Q("terms", **{"parent.communities.ids": self.communities(identity)})

@@ -29,6 +29,12 @@ from invenio_drafts_resources.services.records.config import (
     is_record,
 )
 from invenio_records_resources.services import ConditionalLink, FileServiceConfig
+from invenio_records_resources.services.base.config import (
+    ConfiguratorMixin,
+    FromConfig,
+    FromConfigSearchOptions,
+    SearchOptionsMixin,
+)
 from invenio_records_resources.services.base.links import Link
 from invenio_records_resources.services.files.links import FileLink
 from invenio_records_resources.services.records.links import (
@@ -40,18 +46,12 @@ from ..records import RDMDraft, RDMRecord
 from . import facets
 from .components import (
     AccessComponent,
+    CustomFieldsComponent,
     MetadataComponent,
     PIDsComponent,
     ReviewComponent,
 )
-from .customizations import (
-    ConfiguratorMixin,
-    FromConfig,
-    FromConfigPIDsProviders,
-    FromConfigRequiredPIDs,
-    FromConfigSearchOptions,
-    SearchOptionsMixin,
-)
+from .customizations import FromConfigPIDsProviders, FromConfigRequiredPIDs
 from .permissions import RDMRecordPermissionPolicy
 from .result_items import SecretLinkItem, SecretLinkList
 from .schemas import RDMParentSchema, RDMRecordSchema
@@ -78,6 +78,11 @@ def is_iiif_compatible(file_, ctx):
     """Determine if a file is IIIF compatible."""
     file_ext = splitext(file_.key)[1].replace(".", "").lower()
     return file_ext in current_app.config["IIIF_FORMATS"]
+
+
+def archive_download_enabled(record, ctx):
+    """Return if the archive download feature is enabled."""
+    return current_app.config["RDM_ARCHIVE_DOWNLOAD_ENABLED"]
 
 
 #
@@ -133,12 +138,23 @@ class RDMRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
     link_result_list_cls = SecretLinkList
 
     # Search configuration
-    search = FromConfigSearchOptions("RDM_SEARCH", search_option_cls=RDMSearchOptions)
+    search = FromConfigSearchOptions(
+        "RDM_SEARCH",
+        "RDM_SORT_OPTIONS",
+        "RDM_FACETS",
+        search_option_cls=RDMSearchOptions,
+    )
     search_drafts = FromConfigSearchOptions(
-        "RDM_SEARCH_DRAFTS", search_option_cls=RDMSearchDraftsOptions
+        "RDM_SEARCH_DRAFTS",
+        "RDM_SORT_OPTIONS",
+        "RDM_FACETS",
+        search_option_cls=RDMSearchDraftsOptions,
     )
     search_versions = FromConfigSearchOptions(
-        "RDM_SEARCH_VERSIONING", search_option_cls=RDMSearchVersionsOptions
+        "RDM_SEARCH_VERSIONING",
+        "RDM_SORT_OPTIONS",
+        "RDM_FACETS",
+        search_option_cls=RDMSearchVersionsOptions,
     )
 
     # PIDs configuration
@@ -148,6 +164,7 @@ class RDMRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
     # Components - order matters!
     components = [
         MetadataComponent,
+        CustomFieldsComponent,
         AccessComponent,
         DraftFilesComponent,
         # for the internal `pid` field
@@ -205,6 +222,17 @@ class RDMRecordServiceConfig(RecordServiceConfig, ConfiguratorMixin):
             if_=RecordLink("{+api}/records/{id}/files"),
             else_=RecordLink("{+api}/records/{id}/draft/files"),
         ),
+        "archive": ConditionalLink(
+            cond=is_record,
+            if_=RecordLink(
+                "{+api}/records/{id}/files-archive",
+                when=archive_download_enabled,
+            ),
+            else_=RecordLink(
+                "{+api}/records/{id}/draft/files-archive",
+                when=archive_download_enabled,
+            ),
+        ),
         "latest": RecordLink("{+api}/records/{id}/versions/latest", when=is_record),
         "latest_html": RecordLink("{+ui}/records/{id}/latest", when=is_record),
         "draft": RecordLink("{+api}/records/{id}/draft", when=is_record),
@@ -239,6 +267,14 @@ class RDMFileRecordServiceConfig(FileServiceConfig, ConfiguratorMixin):
         "RDM_PERMISSION_POLICY", default=RDMRecordPermissionPolicy
     )
 
+    file_links_list = {
+        **FileServiceConfig.file_links_list,
+        "archive": RecordLink(
+            "{+api}/records/{id}/files-archive",
+            when=archive_download_enabled,
+        ),
+    }
+
     file_links_item = {
         **FileServiceConfig.file_links_item,
         # FIXME: filename instead
@@ -260,6 +296,8 @@ class RDMFileRecordServiceConfig(FileServiceConfig, ConfiguratorMixin):
 class RDMFileDraftServiceConfig(FileServiceConfig, ConfiguratorMixin):
     """Configuration for draft files."""
 
+    service_id = "draft-files"
+
     record_cls = RDMDraft
     permission_action_prefix = "draft_"
     permission_policy_cls = FromConfig(
@@ -268,6 +306,10 @@ class RDMFileDraftServiceConfig(FileServiceConfig, ConfiguratorMixin):
 
     file_links_list = {
         "self": RecordLink("{+api}/records/{id}/draft/files"),
+        "archive": RecordLink(
+            "{+api}/records/{id}/draft/files-archive",
+            when=archive_download_enabled,
+        ),
     }
 
     file_links_item = {
