@@ -265,6 +265,7 @@ def app_config(app_config):
     app_config["JSONSCHEMAS_HOST"] = "not-used"
 
     # Enable DOI minting...
+    app_config["DOI_REQUIRED"] = True
     app_config["DATACITE_ENABLED"] = True
     app_config["DATACITE_USERNAME"] = "INVALID"
     app_config["DATACITE_PASSWORD"] = "INVALID"

@@ -323,6 +323,9 @@ RDM_PERSISTENT_IDENTIFIERS = {
     }
 """
 
+DOI_REQUIRED = False
+"""Flag to force use of DOI (DATACITE_ENABLED must be enabled)."""
+
 # Configuration for the DataCiteClient used by the DataCitePIDProvider
 
 DATACITE_ENABLED = False
