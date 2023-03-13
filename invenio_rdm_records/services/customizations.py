@@ -51,12 +51,12 @@ class FromConfigRequiredPIDs:
     def __get__(self, obj, objtype=None):
         """Return required pids (descriptor protocol)."""
         pids = obj._app.config.get("RDM_PERSISTENT_IDENTIFIERS", {})
-        doi_enabled = obj._app.config.get("DATACITE_ENABLED", False)
+        doi_required = obj._app.config.get("DOI_REQUIRED", False)
 
         pids = {
             scheme: conf
             for (scheme, conf) in pids.items()
-            if scheme != "doi" or doi_enabled
+            if scheme != "doi" or doi_required
         }
         return [
             scheme for (scheme, conf) in pids.items() if conf.get("required", False)
