@@ -101,7 +101,6 @@ class InvenioRDMRecords(object):
         self.init_config(app)
         self.init_services(app)
         self.init_resource(app)
-        self.init_community_actions(app)
         app.before_request(verify_token)
         app.extensions["invenio-rdm-records"] = self
         app.register_blueprint(blueprint)
@@ -405,61 +404,3 @@ class InvenioRDMRecords(object):
         for config_item in datacite_config_items:
             if config_item in app.config:
                 app.config[config_item] = str(app.config[config_item])
-
-    #
-    # Extra customization properties
-    #
-    def init_community_actions(self, app):
-        """Import and define the community actions in the RDM Extension."""
-
-        class ClassContainer:
-            create = load_class(
-                "RDM_COMMUNITY_ACTION_CREATE",
-                app,
-                default=None,
-                import_string=True,
-            )
-
-            submit = load_class(
-                "RDM_COMMUNITY_ACTION_SUBMIT",
-                app,
-                default=None,
-                import_string=True,
-            )
-
-            delete = load_class(
-                "RDM_COMMUNITY_ACTION_DELETE",
-                app,
-                default=None,
-                import_string=True,
-            )
-
-            accept = load_class(
-                "RDM_COMMUNITY_ACTION_ACCEPT",
-                app,
-                default=None,
-                import_string=True,
-            )
-
-            cancel = load_class(
-                "RDM_COMMUNITY_ACTION_CANCEL",
-                app,
-                default=None,
-                import_string=True,
-            )
-
-            decline = load_class(
-                "RDM_COMMUNITY_ACTION_DECLINE",
-                app,
-                default=None,
-                import_string=True,
-            )
-
-            expire = load_class(
-                "RDM_COMMUNITY_ACTION_EXPIRE",
-                app,
-                default=None,
-                import_string=True,
-            )
-
-        self.community_actions = ClassContainer

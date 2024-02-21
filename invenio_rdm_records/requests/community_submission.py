@@ -11,7 +11,7 @@ from flask_babelex import lazy_gettext as _
 from invenio_records_resources.services.uow import RecordCommitOp, RecordIndexOp
 from invenio_requests.customizations import actions
 
-from ..proxies import current_rdm_records
+from ..customizations import OverridableField
 from ..proxies import current_rdm_records_service as service
 from .base import ReviewRequest
 
@@ -125,25 +125,19 @@ class ExpireAction(actions.ExpireAction):
 #
 # Request
 #
-def build_action_class(action, default):
-    """Factory to generate action class based on user configuration."""
-
-    def _factory(*args, **kwargs):
-        action_class = getattr(current_rdm_records.community_actions, action)
-        action_class = action_class or default
-
-        return action_class(*args, **kwargs)
-
-    return _factory
 
 
 class CommunitySubmission(ReviewRequest):
     """Review request for submitting a record to a community.
 
-    ToDo:
-        - Generalize the implementation to support other external
-        configurations (e.g., ``allowed_topic_ref_types``).
+    Notes:
+        - This class was modified as part of the GEO Knowledge Hub fork;
+        - The modifications made to this class allow its attributes to be changed based on settings made by the
+          user. This approach was adopted to avoid abrupt changes in the code structure.
     """
+
+    # Variable where the configurations of the class properties can be set.
+    config_variable = "RDM_COMMUNITY_SUBMISSION_OVERRIDE_CONFIG"
 
     type_id = "community-submission"
     name = _("Community submission")
@@ -155,17 +149,20 @@ class CommunitySubmission(ReviewRequest):
     topic_can_be_none = False
     allowed_creator_ref_types = ["user"]
     allowed_receiver_ref_types = ["community"]
-    allowed_topic_ref_types = ["record", "package"]
+    allowed_topic_ref_types = OverridableField("allowed_topic_ref_types", ["record"])
     needs_context = {
         "community_roles": ["owner", "manager", "curator"],
     }
 
-    available_actions = {
-        "create": build_action_class("create", actions.CreateAction),
-        "submit": build_action_class("submit", SubmitAction),
-        "delete": build_action_class("delete", actions.DeleteAction),
-        "accept": build_action_class("accept", AcceptAction),
-        "cancel": build_action_class("cancel", CancelAction),
-        "decline": build_action_class("decline", DeclineAction),
-        "expire": build_action_class("expire", ExpireAction),
-    }
+    available_actions = OverridableField(
+        "available_actions",
+        {
+            "create": actions.CreateAction,
+            "submit": SubmitAction,
+            "delete": actions.DeleteAction,
+            "accept": AcceptAction,
+            "cancel": CancelAction,
+            "decline": DeclineAction,
+            "expire": ExpireAction,
+        },
+    )
