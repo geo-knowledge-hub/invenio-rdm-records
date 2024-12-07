@@ -9,6 +9,21 @@
 name: CI
 
 on:
+  push:
+    branches: master
+  pull_request:
+    branches:
+      - master
+      - "maint-**"
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron: "0 3 * * 6"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason"
+        required: false
+        default: "Manual trigger"
   workflow_call:
     inputs:
       python-version:
