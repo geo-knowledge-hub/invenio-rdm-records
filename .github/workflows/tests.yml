@@ -38,7 +38,7 @@ on:
       db-service:
         description: "DB service"
         type: string
-        default: '["postgresql"]'
+        default: '["postgresql14"]'
       search-service:
         description: "Search service"
         type: string
@@ -69,6 +69,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: setup.cfg
+
+      - name: Pre-install
+        uses: ./.github/actions/pre-install
+        if: ${{ hashFiles('.github/actions/pre-install/action.yml') != '' }}
 
       - name: Install dependencies
         run: |
