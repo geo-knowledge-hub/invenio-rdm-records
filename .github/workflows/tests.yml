@@ -24,40 +24,20 @@ on:
         description: "Reason"
         required: false
         default: "Manual trigger"
-  workflow_call:
-    inputs:
-      python-version:
-        description: "Python versions"
-        type: string
-        # NOTE: There is no "array" type, so we use "string" and parse it in the matrix
-        default: '["3.9"]'
-      extras:
-        description: "Extra dependencies"
-        type: string
-        default: 'tests'
-      db-service:
-        description: "DB service"
-        type: string
-        default: '["postgresql14"]'
-      search-service:
-        description: "Search service"
-        type: string
-        default: '["opensearch2"]'
 
 jobs:
   Tests:
     runs-on: ubuntu-24.04
     strategy:
-      fail-fast: false
       matrix:
-        python-version: ${{ fromJson(inputs.python-version) }}
-        db-service: ${{ fromJson(inputs.db-service) }}
-        search-service: ${{ fromJson(inputs.search-service) }}
+        python-version: [3.8, 3.9]
+        db-service: [postgresql13]
+        search-service: [opensearch2,elasticsearch7]
 
     env:
       DB: ${{ matrix.db-service }}
       SEARCH: ${{ matrix.search-service }}
-      EXTRAS: ${{ inputs.extras }}${{ matrix.search-service && ',' || '' }}${{ matrix.search-service }}
+      EXTRAS: ${{ github.event.inputs.extras || 'tests' }}${{ matrix.search-service && ',' || '' }}${{ matrix.search-service }}
 
     steps:
       - name: Checkout
